@@ -40,7 +40,8 @@ namespace RedBigDataTests
 
                 Table table = redBigData.CurrentDatabase.GetTable("bigTable");
                 Assert.AreEqual(table.Path, $@"{redBigData.CurrentDatabase.Path}\bigTable");
-                Assert.AreEqual(table.Columns.Count, 0);
+                Assert.AreEqual(table.ColumnsName.Count, 0);
+                Assert.AreEqual(table.ColumnsType.Count, 0);
                 Assert.AreEqual(table.Rows, 0);
             }
 
@@ -54,7 +55,8 @@ namespace RedBigDataTests
                 Assert.AreEqual(redBigData.CurrentDatabase.TablesName.Count, 1);
                 Assert.AreEqual(redBigData.CurrentDatabase.TablesName[0], "bigTable");
                 Table table = redBigData.CurrentDatabase.GetTable("bigTable");
-                Assert.AreEqual(table.Columns.Count, 0);
+                Assert.AreEqual(table.ColumnsName.Count, 0);
+                Assert.AreEqual(table.ColumnsType.Count, 0);
                 Assert.AreEqual(table.Rows, 0);
             }
         }

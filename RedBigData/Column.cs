@@ -7,28 +7,44 @@ using System.Threading.Tasks;
 
 namespace RedBigDataNamespace
 {
-    public abstract class Column
+    public interface Column
     {
-        public abstract string Name { get; }
+        public string Name { get; }
 
-        internal static Column FromPath(string path)
-        {
-            throw new NotImplementedException();
-        }
+        public void Add(params object[] element);
+
+        public void Insert(int index, params object[] element);
+
+        public void Remove(int index, int count);
+
+        public ReadOnlyCollection<object> Elements { get; }
     }
 
     public abstract class Column<T> : Column
     {
+
         public abstract void Add(params T[] element);
 
         public abstract void Insert(int index, params T[] element);
 
-        public abstract void RemoveFirst(int count);
-
-        public abstract void RemoveLast(int count);
-
         public abstract void Remove(int index, int count);
 
-        public abstract ReadOnlyCollection<T> Elements { get; }
+        public abstract ReadOnlyCollection<T> TypedElements { get; }
+
+        public abstract string Name { get; }
+
+
+
+        public void Add(params object[] element)
+        {
+            Add(element.Cast<T>().ToArray());
+        }
+
+        public void Insert(int index, params object[] element)
+        {
+            Insert(index, element.Cast<T>().ToArray());
+        }
+
+        public ReadOnlyCollection<object> Elements => Array.AsReadOnly(TypedElements.Cast<object>().ToArray());
     }
 }

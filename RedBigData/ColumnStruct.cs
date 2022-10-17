@@ -6,15 +6,15 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace RedBigDataNamespace
 {
     public class ColumnStruct<T> : Column<T> where T : struct
     {
         public Table Table;
-        private string name;
-        public override string Name => name;
-        public string Path { get; }
+        public override string Name { get; }
+        public string Path => $@"{Table.Path}\{Name}";
 
         [Serializable]
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
@@ -28,17 +28,31 @@ namespace RedBigDataNamespace
         public ColumnStruct(Table table, string name)
         {
             Table = table;
-            Path = $@"{Table.Path}\{name}.txt";
-            this.name = name;
-            data = new Data() { elements = new T[0] };
-            Save();
+            Name = name;
+
+            if (!File.Exists(Path))
+            {
+                File.Create(Path);
+                data = new Data() { elements = new T[0] };
+            }
+            else
+            {
+                T[] values = new T[Table.Rows];
+                byte[] bytes = File.ReadAllBytes(Path);
+                int size = Marshal.SizeOf(typeof(T));
+                for (int i = 0; i < Table.Rows; i++)
+                {
+                    values[i] = Store.FromByte<T>(bytes.Take(size).ToArray());
+                    bytes = bytes.Skip(size).ToArray();
+                }
+                data = new Data() { elements = values };
+            }
         }
 
         internal ColumnStruct(Table table, string name, T[] data)
         {
             Table = table;
-            Path = $@"{Table.Path}\{name}.txt";
-            this.name = name;
+            Name = name;
             this.data = new Data() { elements = data };
         }
 
@@ -50,58 +64,67 @@ namespace RedBigDataNamespace
                     data.elements
                         .Concat(element).ToArray()
             };
-            Save();
+            using (StreamWriter sw = new StreamWriter(Path))
+            {
+                BinaryWriter bw = new BinaryWriter(sw.BaseStream);
+                bw.Seek(0, SeekOrigin.End);
+                bw.Write(element.SelectMany(e => Store.ToBytes(e)).ToArray());
+            }
         }
 
         public override void Insert(int index, params T[] element)
         {
+            byte[] temp;
+            using (StreamReader sr = new StreamReader(Path))
+            {
+                BinaryReader br = new BinaryReader(sr.BaseStream);
+                br.ReadBytes(Marshal.SizeOf(typeof(T)) * index);
+                temp = br.ReadBytes(Marshal.SizeOf(typeof(T)) * (data.elements.Length - index));
+            }
+
             data = new Data()
             {
                 elements =
                     data.elements.Take(index)
                         .Concat(element)
-                        .Concat(data.elements.Skip(0)).ToArray()
+                        .Concat(data.elements.Skip(index)).ToArray()
             };
-            Save();
-        }
 
-        public override void RemoveFirst(int count)
-        {
-            data = new Data()
+            using (StreamWriter sw = new StreamWriter(Path, true))
             {
-                elements =
-                    data.elements.Skip(count).ToArray()
-            };
-            Save();
-        }
-
-        public override void RemoveLast(int count)
-        {
-            data = new Data()
-            {
-                elements =
-                    data.elements.SkipLast(count).ToArray()
-            };
-            Save();
+                BinaryWriter bw = new BinaryWriter(sw.BaseStream);
+                bw.Seek(Marshal.SizeOf(typeof(T)) * index, SeekOrigin.Begin);
+                bw.Write(element.SelectMany(e => Store.ToBytes(e)).ToArray());
+                bw.Write(temp);
+            }
         }
 
         public override void Remove(int index, int count)
         {
+            byte[] temp;
+            using (StreamReader sr = new StreamReader(Path))
+            {
+                BinaryReader br = new BinaryReader(sr.BaseStream);
+                br.ReadBytes(Marshal.SizeOf(typeof(T)) * (index + count));
+                temp = br.ReadBytes(Marshal.SizeOf(typeof(T)) * (data.elements.Length - index - count));
+            }
+
             data = new Data()
             {
                 elements =
                     data.elements.Take(index)
                         .Concat(data.elements.Skip(index + count)).ToArray()
             };
-            Save();
+
+            using (StreamWriter sw = new StreamWriter(Path, true))
+            {
+                BinaryWriter bw = new BinaryWriter(sw.BaseStream);
+                bw.Seek(Marshal.SizeOf(typeof(T)) * index, SeekOrigin.Begin);
+                bw.Write(temp);
+            }
         }
 
-        private void Save()
-        {
-            File.WriteAllBytes(Path, Store.ToBytes(data));
-        }
-
-        public override ReadOnlyCollection<T> Elements
+        public override ReadOnlyCollection<T> TypedElements
             => Array.AsReadOnly(data.elements);
     }
 }

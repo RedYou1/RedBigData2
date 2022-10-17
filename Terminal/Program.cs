@@ -48,15 +48,15 @@
                                     }
                                     Table table = redBigData.CurrentDatabase.GetTable(args[2]);
                                     Console.WriteLine($"Table: {args[2]} - {table.Rows} rows");
-                                    if (table.Columns.Count == 0)
+                                    if (table.ColumnsName.Count == 0)
                                     {
                                         Console.WriteLine("No Columns");
                                     }
                                     else
                                     {
-                                        foreach (Column column in table.Columns)
+                                        foreach (string column in table.ColumnsName)
                                         {
-                                            Console.WriteLine($"  -{column.Name}");
+                                            Console.WriteLine($"  -{column}");
                                         }
                                     }
                                 }

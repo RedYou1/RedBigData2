@@ -20,7 +20,7 @@ namespace RedBigDataNamespace
         }
 
         public string Path { get; }
-        public string InfoPath => @$"{Path}\info.txt";
+        public string InfoPath => @$"{Path}\info";
 
         private SyncFile<Data> file;
         private Data data { get => file.Data; set => file.Data = value; }
