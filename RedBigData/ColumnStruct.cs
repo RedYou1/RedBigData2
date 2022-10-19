@@ -94,6 +94,7 @@ namespace RedBigDataNamespace
             {
                 bw.Seek(Marshal.SizeOf(typeof(T)) * index, SeekOrigin.Begin);
                 bw.Write(temp);
+                sw.SetLength(sw.Position);
             }
         }
 
