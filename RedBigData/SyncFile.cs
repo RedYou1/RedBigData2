@@ -18,24 +18,24 @@ namespace RedBigData
             set
             {
                 data = value;
-                using (StreamWriter sw = new StreamWriter(Path))
+                using (FileStream sw = new FileStream(Path, FileMode.Truncate, FileAccess.Write, FileShare.None))
                 {
                     Save.Invoke(sw, data);
                 }
             }
         }
 
-        public Action<StreamWriter, T> Save { get; }
-        public Func<StreamReader, T> Load { get; }
+        public Action<FileStream, T> Save { get; }
+        public Func<FileStream, T> Load { get; }
 
-        public SyncFile(string path, T defaultData, Action<StreamWriter, T> save, Func<StreamReader, T> load)
+        public SyncFile(string path, T defaultData, Action<FileStream, T> save, Func<FileStream, T> load)
         {
             Path = path;
             Save = save;
             Load = load;
             if (File.Exists(path))
             {
-                using (StreamReader sw = new StreamReader(Path, Encoding.UTF8))
+                using (FileStream sw = new FileStream(Path, FileMode.Open, FileAccess.Read, FileShare.None))
                 {
                     data = Load.Invoke(sw);
                 }
@@ -43,7 +43,7 @@ namespace RedBigData
             else
             {
                 data = defaultData;
-                using (StreamWriter sw = new StreamWriter(Path))
+                using (FileStream sw = new FileStream(Path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
                     Save.Invoke(sw, data);
                 }

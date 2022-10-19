@@ -1,4 +1,5 @@
-﻿using RedBigData;
+﻿using Microsoft.VisualBasic;
+using RedBigData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,7 +20,9 @@ namespace RedBigDataNamespace
             public string[] tables;
         }
 
-        public string Path { get; }
+        public RedBigData RedBigData { get; }
+        public string Name { get; }
+        public string Path => $@"{RedBigData.Path}\{Name}";
         public string InfoPath => @$"{Path}\info";
 
         private SyncFile<Data> file;
@@ -27,7 +30,8 @@ namespace RedBigDataNamespace
 
         public Database(RedBigData rbd, string name)
         {
-            Path = $@"{rbd.Path}\{name}";
+            RedBigData = rbd;
+            Name = name;
             if (!Directory.Exists(Path))
                 Directory.CreateDirectory(Path);
 
@@ -36,17 +40,36 @@ namespace RedBigDataNamespace
                 Save, Load);
         }
 
-        private static void Save(StreamWriter stream, Data data)
+        private static void Save(FileStream stream, Data data)
         {
-            Store.SaveArrayString(stream, ref data.tables);
+            using (BinaryWriter bw = new BinaryWriter(stream))
+            using (StreamWriter sw = new StreamWriter(stream))
+            {
+                bw.Write(Store.ToBytes(data.tables.Length));
+                bw.Flush();
+                foreach (string s in data.tables)
+                {
+                    sw.WriteLine(s.Replace('\n', (char)0x1));
+                }
+            }
         }
 
-        private static Data Load(StreamReader stream)
+        private static Data Load(FileStream stream)
         {
-            return new Data()
+            using (StreamReader sr = new StreamReader(stream))
+            using (BinaryReader br = new BinaryReader(stream))
             {
-                tables = Store.LoadArrayString(stream)
-            };
+                int length = Store.FromByte<int>(br.ReadBytes(sizeof(int)));
+                string[] strings = new string[length];
+                for (int i = 0; i < length; i++)
+                {
+                    strings[i] = sr.ReadLine()!.Replace((char)0x1, '\n');
+                }
+                return new Data()
+                {
+                    tables = strings
+                };
+            }
         }
 
         public Table CreateTable(string name)

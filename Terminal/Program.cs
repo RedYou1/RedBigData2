@@ -13,6 +13,28 @@
             Console.OutputEncoding = System.Text.Encoding.Unicode;
             RedBigData redBigData = new(@"..\..\..\Databases");
 
+            Console.WriteLine("Welcome to RedBigData");
+
+            {
+                IEnumerable<string> db = redBigData.DatabasesName;
+                if (db.Count() == 1)
+                {
+                    redBigData.SetCurrentDatabase(db.First());
+                    Console.WriteLine($"Only one database were created so you were automatically connected to {db.First()}");
+                }
+                else
+                {
+                    Console.WriteLine("List of databases:");
+                    if (!db.Any())
+                        Console.WriteLine("No Databases");
+                    else
+                        foreach (string name in db)
+                        {
+                            Console.WriteLine($"-{name}");
+                        }
+                }
+            }
+
             string? command;
             while (!string.IsNullOrWhiteSpace(command = Console.ReadLine()))
             {
@@ -48,15 +70,15 @@
                                     }
                                     Table table = redBigData.CurrentDatabase.GetTable(args[2]);
                                     Console.WriteLine($"Table: {args[2]} - {table.Rows} rows");
-                                    if (table.ColumnsName.Count == 0)
+                                    if (table.Columns.Count == 0)
                                     {
                                         Console.WriteLine("No Columns");
                                     }
                                     else
                                     {
-                                        foreach (string column in table.ColumnsName)
+                                        foreach (Table.Col column in table.Columns)
                                         {
-                                            Console.WriteLine($"  -{column}");
+                                            Console.WriteLine($"  -{column.name} - {column.type}");
                                         }
                                     }
                                 }
@@ -101,6 +123,75 @@
                                 break;
                         }
                         break;
+                    case "add":
+                        {
+                            if (redBigData.CurrentDatabase is null)
+                            {
+                                Console.WriteLine("No Database Selected");
+                                break;
+                            }
+
+                            Table table = redBigData.CurrentDatabase.GetTable(args[1]);
+
+                            object[] data = args.Skip(2).ToArray<object>();
+
+                            for (int i = 0; i < table.Columns.Count; i++)
+                            {
+                                switch (table.Columns[i].type)
+                                {
+                                    case TypeColumn.Byte:
+                                        data[i] = byte.Parse((string)data[i]);
+                                        break;
+                                    case TypeColumn.Short:
+                                        data[i] = short.Parse((string)data[i]);
+                                        break;
+                                    case TypeColumn.Int:
+                                        data[i] = int.Parse((string)data[i]);
+                                        break;
+                                    case TypeColumn.Long:
+                                        data[i] = long.Parse((string)data[i]);
+                                        break;
+                                }
+                            }
+
+                            table.AddRow(data);
+
+                            break;
+                        }
+                    case "select":
+                        {
+                            if (redBigData.CurrentDatabase is null)
+                            {
+                                Console.WriteLine("No Database Selected");
+                                break;
+                            }
+
+                            Table table = redBigData.CurrentDatabase.GetTable(args[2]);
+
+                            string[] col;
+                            if (args[1] == "*")
+                            {
+                                col = table.Columns.Select(c => c.name).ToArray();
+                            }
+                            else
+                            {
+                                col = args[1].Split(',');
+                            }
+
+                            IEnumerable<object[]> rows = table.GetRow(0, table.Rows, col);
+
+                            if (!rows.Any())
+                            {
+                                Console.WriteLine("no rows");
+                            }
+
+                            foreach (object[] row in rows)
+                            {
+                                Console.WriteLine(string.Join(',', row.Select(d => d.ToString())));
+                            }
+
+                            break;
+                        }
                     default:
                         Console.WriteLine("Unknown Command");
                         break;

@@ -13,7 +13,7 @@ namespace RedBigData
     {
         public override string Name { get; }
 
-        public string Path => @$"{Path}\{Name}";
+        public string Path => @$"{Table.Path}\{Name}";
 
         private Table Table { get; }
 
@@ -28,10 +28,13 @@ namespace RedBigData
             Name = name;
             Save = save;
             Load = load;
+            if (!Directory.Exists(Path))
+                Directory.CreateDirectory(Path);
             elements = new T[Table.Rows];
             for (int i = 0; i < Table.Rows; i++)
             {
-                using (StreamReader sr = new StreamReader($@"{Path}\{i}"))
+                using (FileStream fs = new FileStream($@"{Path}\{i}", FileMode.Open, FileAccess.Read, FileShare.None))
+                using (StreamReader sr = new StreamReader(fs))
                 {
                     elements[i] = Load.Invoke(sr);
                 }
@@ -40,10 +43,11 @@ namespace RedBigData
 
         public override void Add(params T[] elements)
         {
-            int i = elements.Length;
+            int i = this.elements.Length;
             foreach (T element in elements)
             {
-                using (StreamWriter sw = new StreamWriter($@"{Path}\{i}"))
+                using (FileStream fs = new FileStream($@"{Path}\{i}", FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                using (StreamWriter sw = new StreamWriter(fs))
                 {
                     Save.Invoke(sw, element);
                 }
@@ -55,9 +59,10 @@ namespace RedBigData
 
         public override void Insert(int index, params T[] elements)
         {
-            for (int i = this.elements.Length; i >= index; i--)
+            for (int i = this.elements.Length - 1; i >= index; i--)
             {
-                using (StreamWriter sw = new StreamWriter($@"{Path}\{i + elements.Length}"))
+                using (FileStream fs = new FileStream($@"{Path}\{i + elements.Length}", FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                using (StreamWriter sw = new StreamWriter(fs))
                 {
                     Save.Invoke(sw, this.elements[i]);
                 }
@@ -65,7 +70,8 @@ namespace RedBigData
             int i2 = index;
             foreach (T element in elements)
             {
-                using (StreamWriter sw = new StreamWriter($@"{Path}\{i2}"))
+                using (FileStream fs = new FileStream($@"{Path}\{i2}", FileMode.Truncate, FileAccess.Write, FileShare.None))
+                using (StreamWriter sw = new StreamWriter(fs))
                 {
                     Save.Invoke(sw, element);
                 }
@@ -78,12 +84,17 @@ namespace RedBigData
 
         public override void Remove(int index, int count)
         {
-            for (int i = index; i <= index + count; i++)
+            for (int i = index + count; i < elements.Length; i++)
             {
-                using (StreamWriter sw = new StreamWriter($@"{Path}\{i + count}"))
+                using (FileStream fs = new FileStream($@"{Path}\{i - count}", FileMode.Truncate, FileAccess.Write, FileShare.None))
+                using (StreamWriter sw = new StreamWriter(fs))
                 {
-                    Save.Invoke(sw, elements[i + count]);
+                    Save.Invoke(sw, elements[i]);
                 }
+            }
+            for (int i = elements.Length - count; i < elements.Length; i++)
+            {
+                File.Delete($@"{Path}\{i}");
             }
             elements = elements.Take(index)
                         .Concat(elements.Skip(index + count)).ToArray();

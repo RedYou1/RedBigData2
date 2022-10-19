@@ -1,4 +1,5 @@
-﻿using RedBigData;
+﻿using Microsoft.VisualBasic;
+using RedBigData;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -26,17 +27,19 @@ namespace RedBigDataNamespace
         public string Name { get; }
         public string Path => $@"{Database.Path}\{Name}";
         public string InfoPath => @$"{Path}\info";
-        private Column[] columns => data.columns
-               .Select((c, i) =>
-                   NewColumn(c, data.typeColumms[i])).ToArray();
 
         [Serializable]
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
         private struct Data
         {
             public int rows;
-            public string[] columns;
-            public TypeColumn[] typeColumms;
+            public Col[] columns;
+        }
+
+        public struct Col
+        {
+            public string name { get; init; }
+            public TypeColumn type { get; init; }
         }
 
         private SyncFile<Data> file;
@@ -54,9 +57,14 @@ namespace RedBigDataNamespace
                 new Data()
                 {
                     rows = 0,
-                    columns = new string[0],
-                    typeColumms = new TypeColumn[0]
+                    columns = new Col[0]
                 }, Save, Load);
+
+            columns = new Column[data.columns.Length];
+            for (int i = 0; i < data.columns.Length; i++)
+            {
+                columns[i] = NewColumn(data.columns[i].name, data.columns[i].type);
+            }
         }
 
         public void AddColumn(string name, TypeColumn type)
@@ -65,20 +73,19 @@ namespace RedBigDataNamespace
             {
                 throw new NotImplementedException();
             }
-            if (data.columns.Contains(name))
+            if (data.columns.Any(c => c.name == name))
             {
                 throw new Exception("already contains this name");
             }
             data = new Data()
             {
                 rows = data.rows,
-                columns = data.columns.Append(name).ToArray(),
-                typeColumms = data.typeColumms.Append(type).ToArray()
+                columns = data.columns.Append(new Col { name = name, type = type }).ToArray()
             };
-            NewColumn(name, type);
+            columns = columns.Append(NewColumn(name, type)).ToArray();
         }
 
-        public void AddRow(object[] row)
+        public void AddRow(params object[] row)
         {
             if (data.columns.Length != row.Length)
             {
@@ -86,17 +93,16 @@ namespace RedBigDataNamespace
             }
             for (int i = 0; i < data.columns.Length; i++)
             {
-                NewColumn(data.columns[i], data.typeColumms[i]).Add(row[i]);
+                columns[i].Add(row[i]);
             }
             data = new Data()
             {
                 rows = data.rows + 1,
-                columns = data.columns,
-                typeColumms = data.typeColumms
+                columns = data.columns
             };
         }
 
-        public void InsertRow(int index, object[] row)
+        public void InsertRow(int index, params object[] row)
         {
             if (data.columns.Length != row.Length)
             {
@@ -104,13 +110,12 @@ namespace RedBigDataNamespace
             }
             for (int i = 0; i < data.columns.Length; i++)
             {
-                NewColumn(data.columns[i], data.typeColumms[i]).Insert(index, row[i]);
+                columns[i].Insert(index, row[i]);
             }
             data = new Data()
             {
                 rows = data.rows + 1,
-                columns = data.columns,
-                typeColumms = data.typeColumms
+                columns = data.columns
             };
         }
 
@@ -118,41 +123,87 @@ namespace RedBigDataNamespace
         {
             for (int i = 0; i < data.columns.Length; i++)
             {
-                NewColumn(data.columns[i], data.typeColumms[i]).Remove(index, count);
+                columns[i].Remove(index, count);
             }
             data = new Data()
             {
                 rows = data.rows - count,
-                columns = data.columns,
-                typeColumms = data.typeColumms
+                columns = data.columns
             };
         }
 
-        private static void Save(StreamWriter stream, Data data)
+        public IEnumerable<object[]> GetRow(int from, int count, params string[] columns)
         {
-            new BinaryWriter(stream.BaseStream).Write(Store.ToBytes<int>(data.rows));
-            Store.SaveArrayString(stream, ref data.columns);
-            new BinaryWriter(stream.BaseStream)
-                .Write(data.typeColumms.Select(t => (byte)t).ToArray());
-        }
+            if (from + count > Rows)
+                throw new IndexOutOfRangeException();
 
-        private static Data Load(StreamReader stream)
-        {
-            int rows = Store.FromByte<int>(new BinaryReader(stream.BaseStream)
-                .ReadBytes(sizeof(int)));
-            return new Data()
+            ReadOnlyCollection<object>[] data = new ReadOnlyCollection<object>[columns.Length];
+            for (int i = 0; i < columns.Length; i++)
             {
-                rows = rows,
-                columns = Store.LoadArrayString(stream),
-                typeColumms = new BinaryReader(stream.BaseStream)
-                    .ReadBytes(rows * sizeof(byte))
-                    .Select(t => (TypeColumn)t).ToArray()
-            };
+                IEnumerable<Column> col = this.columns.Where(c => c.Name == columns[i]);
+                if (col.Count() != 1)
+                    throw new Exception($"column {columns[i]} dont exists or have multiple");
+                data[i] = col.First().Elements;
+            }
+
+            for (int i = from; i < from + count; i++)
+            {
+                object[] o = new object[columns.Length];
+                for (int c = 0; c < columns.Length; c++)
+                {
+                    o[c] = data[c][i];
+                }
+                yield return o;
+            }
+        }
+
+        private static void Save(FileStream stream, Data data)
+        {
+            using (BinaryWriter bw = new BinaryWriter(stream))
+            using (StreamWriter sw = new StreamWriter(stream))
+            {
+                bw.Write(Store.ToBytes<int>(data.rows));
+                bw.Write(Store.ToBytes(data.columns.Length));
+                bw.Write(data.columns.Select(t => (byte)t.type).ToArray());
+                bw.Flush();
+                foreach (string s in data.columns.Select(c => c.name))
+                {
+                    sw.WriteLine(s.Replace('\n', (char)0x1));
+                }
+            }
+        }
+
+        private static Data Load(FileStream stream)
+        {
+            using (BinaryReader br = new BinaryReader(stream))
+            using (StreamReader sr = new StreamReader(stream))
+            {
+                int rows = Store.FromByte<int>(br.ReadBytes(sizeof(int)));
+
+                int length = Store.FromByte<int>(br.ReadBytes(sizeof(int)));
+                TypeColumn[] typeColumns =
+                    br.ReadBytes(length)
+                        .Select(t => (TypeColumn)t).ToArray();
+
+                string[] columns = new string[length];
+                for (int i = 0; i < length; i++)
+                {
+                    columns[i] = sr.ReadLine()!.Replace((char)0x1, '\n');
+                }
+
+                return new Data()
+                {
+                    rows = rows,
+                    columns = Enumerable.Range(0, length)
+                        .Select(i => new Col { name = columns[i], type = typeColumns[i] }).ToArray()
+                };
+            }
         }
 
         public int Rows => data.rows;
-        public ReadOnlyCollection<string> ColumnsName => Array.AsReadOnly(data.columns);
-        public ReadOnlyCollection<TypeColumn> ColumnsType => Array.AsReadOnly(data.typeColumms);
+
+        private Column[] columns;
+        public ReadOnlyCollection<Col> Columns => Array.AsReadOnly(data.columns);
 
         private Column NewColumn(string name, TypeColumn typeColumm)
         {

@@ -30,25 +30,5 @@ namespace RedBigData
             pResult.Free();
             return result;
         }
-
-        internal static void SaveArrayString(StreamWriter stream, ref string[] strings)
-        {
-            stream.WriteLine(strings.Length);
-            foreach (string s in strings)
-            {
-                stream.WriteLine(s.Replace('\n', (char)0x1));
-            }
-        }
-
-        internal static string[] LoadArrayString(StreamReader stream)
-        {
-            int length = int.Parse(stream.ReadLine()!);
-            string[] strings = new string[length];
-            for (int i = 0; i < length; i++)
-            {
-                strings[i] = stream.ReadLine()!.Replace((char)0x1, '\n');
-            }
-            return strings;
-        }
     }
 }

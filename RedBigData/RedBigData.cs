@@ -1,4 +1,5 @@
-﻿using RedBigData;
+﻿using Microsoft.VisualBasic;
+using RedBigData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -44,19 +45,38 @@ namespace RedBigDataNamespace
                 }, Save, Load);
         }
 
-        private static void Save(StreamWriter stream, Data data)
+        private static void Save(FileStream stream, Data data)
         {
-            stream.WriteLine(data.version);
-            Store.SaveArrayString(stream, ref data.databases);
+            using (BinaryWriter bw = new BinaryWriter(stream))
+            using (StreamWriter sw = new StreamWriter(stream))
+            {
+                bw.Write(Store.ToBytes(data.databases.Length));
+                bw.Flush();
+                foreach (string s in data.databases)
+                {
+                    sw.WriteLine(s.Replace('\n', (char)0x1));
+                }
+                sw.WriteLine(data.version);
+            }
         }
 
-        private static Data Load(StreamReader stream)
+        private static Data Load(FileStream stream)
         {
-            return new Data()
+            using (BinaryReader br = new BinaryReader(stream))
+            using (StreamReader sr = new StreamReader(stream))
             {
-                version = Version.Parse(stream.ReadLine()!),
-                databases = Store.LoadArrayString(stream)
-            };
+                int length = Store.FromByte<int>(br.ReadBytes(sizeof(int)));
+                string[] strings = new string[length];
+                for (int i = 0; i < length; i++)
+                {
+                    strings[i] = sr.ReadLine()!.Replace((char)0x1, '\n');
+                }
+                return new Data()
+                {
+                    databases = strings,
+                    version = Version.Parse(sr.ReadLine()!)
+                };
+            }
         }
 
         public Database? CurrentDatabase { get; private set; }
