@@ -12,15 +12,6 @@ using System.Xml.Linq;
 
 namespace RedBigDataNamespace
 {
-    public enum TypeColumn : byte
-    {
-        String = 0,
-        Byte = 1,
-        Short = 2,
-        Int = 3,
-        Long = 4,
-    }
-
     public class Table
     {
         public Database Database { get; }
@@ -33,10 +24,10 @@ namespace RedBigDataNamespace
         private struct Data
         {
             public int rows;
-            public Col[] columns;
+            public ColumnInfo[] columns;
         }
 
-        public struct Col
+        public struct ColumnInfo
         {
             public string name { get; init; }
             public TypeColumn type { get; init; }
@@ -57,7 +48,7 @@ namespace RedBigDataNamespace
                 new Data()
                 {
                     rows = 0,
-                    columns = new Col[0]
+                    columns = new ColumnInfo[0]
                 }, Save, Load);
 
             columns = new Column[data.columns.Length];
@@ -80,7 +71,7 @@ namespace RedBigDataNamespace
             data = new Data()
             {
                 rows = data.rows,
-                columns = data.columns.Append(new Col { name = name, type = type }).ToArray()
+                columns = data.columns.Append(new ColumnInfo { name = name, type = type }).ToArray()
             };
             columns = columns.Append(NewColumn(name, type)).ToArray();
         }
@@ -195,7 +186,7 @@ namespace RedBigDataNamespace
                 {
                     rows = rows,
                     columns = Enumerable.Range(0, length)
-                        .Select(i => new Col { name = columns[i], type = typeColumns[i] }).ToArray()
+                        .Select(i => new ColumnInfo { name = columns[i], type = typeColumns[i] }).ToArray()
                 };
             }
         }
@@ -203,7 +194,7 @@ namespace RedBigDataNamespace
         public int Rows => data.rows;
 
         private Column[] columns;
-        public ReadOnlyCollection<Col> Columns => Array.AsReadOnly(data.columns);
+        public ReadOnlyCollection<ColumnInfo> Columns => Array.AsReadOnly(data.columns);
 
         private Column NewColumn(string name, TypeColumn typeColumm)
         {

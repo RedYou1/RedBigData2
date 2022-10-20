@@ -125,5 +125,14 @@ namespace RedBigDataTests
             table = redBigData.CurrentDatabase!.GetTable("bigTable");
             Assert.AreEqual(table.Rows, 0);
         }
+
+        [TestMethod]
+        public void _4_createTable2()
+        {
+            RedBigData redBigData = new(TestPath);
+            Table table = redBigData.SetCurrentDatabase("bigDB")!
+                            .CreateTable("bigTable2", new Table.ColumnInfo { name = "c1", type = TypeColumn.Int }, new Table.ColumnInfo { name = "c2", type = TypeColumn.String });
+            Assert.AreEqual(table.Columns.Count, 2);
+        }
     }
 }

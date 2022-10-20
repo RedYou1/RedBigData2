@@ -7,6 +7,15 @@ using System.Threading.Tasks;
 
 namespace RedBigDataNamespace
 {
+    public enum TypeColumn : byte
+    {
+        String,
+        Byte,
+        Short,
+        Int,
+        Long
+    }
+
     public interface Column
     {
         public string Name { get; }
@@ -18,6 +27,8 @@ namespace RedBigDataNamespace
         public void Remove(int index, int count);
 
         public ReadOnlyCollection<object> Elements { get; }
+
+        public Type Type { get; }
     }
 
     public abstract class Column<T> : Column
@@ -33,7 +44,7 @@ namespace RedBigDataNamespace
 
         public abstract string Name { get; }
 
-
+        public Type Type => typeof(T);
 
         public void Add(params object[] element)
         {

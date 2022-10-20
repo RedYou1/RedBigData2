@@ -72,13 +72,18 @@ namespace RedBigDataNamespace
             }
         }
 
-        public Table CreateTable(string name)
+        public Table CreateTable(string name, params Table.ColumnInfo[] columnInfos)
         {
             data = new Data()
             {
                 tables = data.tables.Append(name).ToArray()
             };
-            return new Table(this, name);
+            Table table = new Table(this, name);
+            foreach (Table.ColumnInfo info in columnInfos)
+            {
+                table.AddColumn(info.name, info.type);
+            }
+            return table;
         }
 
         public ReadOnlyCollection<string> TablesName
@@ -98,7 +103,7 @@ namespace RedBigDataNamespace
             {
                 return new Table(this, name);
             }
-            throw new Exception();
+            throw new Exception($"table name '{name}' not found");
         }
     }
 }

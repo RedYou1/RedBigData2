@@ -15,7 +15,8 @@ redBigData.SetCurrentDatabase("database");
 You can now create your tables.
 
 ```
-Table table = redBigData.CurrentDatabase.CreateTable("table")
+Table table = redBigData.CurrentDatabase.CreateTable("table",columnsInfos);
+table.AddColumn(columnInfos);
 ```
 
 And do querries with there instances.

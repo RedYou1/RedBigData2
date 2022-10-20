@@ -80,7 +80,8 @@ namespace RedBigDataNamespace
         }
 
         public Database? CurrentDatabase { get; private set; }
-        public void SetCurrentDatabase(string? name)
+
+        public Database? SetCurrentDatabase(string? name)
         {
             if (name is null)
             {
@@ -94,6 +95,7 @@ namespace RedBigDataNamespace
             {
                 throw new Exception("this Database doesn't exists");
             }
+            return CurrentDatabase;
         }
 
         public ReadOnlyCollection<string> DatabasesName
