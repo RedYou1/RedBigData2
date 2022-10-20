@@ -1,5 +1,6 @@
 ﻿namespace Terminal
 {
+    using RedBigData;
     using RedBigDataNamespace;
     using System;
     using System.Collections.Generic;
@@ -138,64 +139,14 @@
                                 object[] data = args.Skip(2).ToArray<object>();
                                 for (int i = 0; i < table.Columns.Count; i++)
                                 {
-                                    switch (table.Columns[i].type)
+                                    object? result = table.Columns[i].type.FromString((string)data[i]);
+                                    if (result is not null)
                                     {
-                                        case TypeColumn.String:
-                                            break;
-                                        case TypeColumn.Byte:
-                                            {
-                                                byte temp;
-                                                if (byte.TryParse((string)data[i], out temp))
-                                                {
-                                                    data[i] = temp;
-                                                }
-                                                else
-                                                {
-                                                    throw new Exception($"data[{i}] is not correctly formated\n{data[i]} is not a {table.Columns[i].type}");
-                                                }
-                                            }
-                                            break;
-                                        case TypeColumn.Short:
-                                            {
-                                                short temp;
-                                                if (short.TryParse((string)data[i], out temp))
-                                                {
-                                                    data[i] = temp;
-                                                }
-                                                else
-                                                {
-                                                    throw new Exception($"data[{i}] is not correctly formated\n{data[i]} is not a {table.Columns[i].type}");
-                                                }
-                                            }
-                                            break;
-                                        case TypeColumn.Int:
-                                            {
-                                                int temp;
-                                                if (int.TryParse((string)data[i], out temp))
-                                                {
-                                                    data[i] = temp;
-                                                }
-                                                else
-                                                {
-                                                    throw new Exception($"data[{i}] is not correctly formated\n{data[i]} is not a {table.Columns[i].type}");
-                                                }
-                                            }
-                                            break;
-                                        case TypeColumn.Long:
-                                            {
-                                                long temp;
-                                                if (long.TryParse((string)data[i], out temp))
-                                                {
-                                                    data[i] = temp;
-                                                }
-                                                else
-                                                {
-                                                    throw new Exception($"data[{i}] is not correctly formated\n{data[i]} is not a {table.Columns[i].type}");
-                                                }
-                                            }
-                                            break;
-                                        default:
-                                            throw new NotImplementedException();
+                                        data[i] = result;
+                                    }
+                                    else
+                                    {
+                                        throw new ArgumentException($"the {i} item {data[i]} is not the rigth type. {table.Columns[i].type.Name}");
                                     }
                                 }
 

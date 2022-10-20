@@ -7,15 +7,6 @@ using System.Threading.Tasks;
 
 namespace RedBigDataNamespace
 {
-    public enum TypeColumn : byte
-    {
-        String,
-        Byte,
-        Short,
-        Int,
-        Long
-    }
-
     public interface Column
     {
         public string Name { get; }

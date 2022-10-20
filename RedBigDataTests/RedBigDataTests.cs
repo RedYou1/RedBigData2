@@ -2,6 +2,7 @@ namespace RedBigDataTests
 {
     using Microsoft.VisualStudio.TestPlatform.ObjectModel;
     using Newtonsoft.Json.Linq;
+    using RedBigData;
     using RedBigDataNamespace;
 
     [TestClass]
@@ -116,6 +117,9 @@ namespace RedBigDataTests
 
             table.RemoveRow(1, 1);
             Assert.AreEqual(table.Rows, 2);
+            data = table.GetRow(1, 1, "col1", "name").ToArray();
+            Assert.AreEqual(data[0][0], 2);
+            Assert.AreEqual(data[0][1], "wow");
 
             table = redBigData.CurrentDatabase!.GetTable("bigTable");
 

@@ -54,7 +54,7 @@ namespace RedBigDataNamespace
             columns = new Column[data.columns.Length];
             for (int i = 0; i < data.columns.Length; i++)
             {
-                columns[i] = NewColumn(data.columns[i].name, data.columns[i].type);
+                columns[i] = NewColumn(data.columns[i].name, data.columns[i].type.ID);
             }
         }
 
@@ -73,7 +73,7 @@ namespace RedBigDataNamespace
                 rows = data.rows,
                 columns = data.columns.Append(new ColumnInfo { name = name, type = type }).ToArray()
             };
-            columns = columns.Append(NewColumn(name, type)).ToArray();
+            columns = columns.Append(NewColumn(name, type.ID)).ToArray();
         }
 
         public void AddRow(params object[] row)
@@ -155,7 +155,7 @@ namespace RedBigDataNamespace
             {
                 bw.Write(Store.ToBytes<int>(data.rows));
                 bw.Write(Store.ToBytes(data.columns.Length));
-                bw.Write(data.columns.Select(t => (byte)t.type).ToArray());
+                bw.Write(data.columns.Select(t => t.type.IDByte).ToArray());
                 bw.Flush();
                 foreach (string s in data.columns.Select(c => c.name))
                 {
@@ -174,7 +174,7 @@ namespace RedBigDataNamespace
                 int length = Store.FromByte<int>(br.ReadBytes(sizeof(int)));
                 TypeColumn[] typeColumns =
                     br.ReadBytes(length)
-                        .Select(t => (TypeColumn)t).ToArray();
+                        .Select(t => TypeColumn.FromID(t)).ToArray();
 
                 string[] columns = new string[length];
                 for (int i = 0; i < length; i++)
@@ -196,19 +196,19 @@ namespace RedBigDataNamespace
         private Column[] columns;
         public ReadOnlyCollection<ColumnInfo> Columns => Array.AsReadOnly(data.columns);
 
-        private Column NewColumn(string name, TypeColumn typeColumm)
+        private Column NewColumn(string name, TypeColumnID typeColumm)
         {
             switch (typeColumm)
             {
-                case TypeColumn.String:
+                case TypeColumnID.String:
                     return new ColumnDym<string>(this, name, (stream, e) => stream.Write(e), stream => stream.ReadToEnd());
-                case TypeColumn.Byte:
+                case TypeColumnID.Byte:
                     return new ColumnStruct<byte>(this, name);
-                case TypeColumn.Short:
+                case TypeColumnID.Short:
                     return new ColumnStruct<short>(this, name);
-                case TypeColumn.Int:
+                case TypeColumnID.Int:
                     return new ColumnStruct<int>(this, name);
-                case TypeColumn.Long:
+                case TypeColumnID.Long:
                     return new ColumnStruct<long>(this, name);
                 default:
                     throw new NotImplementedException();
